@@ -5,10 +5,133 @@ var app = express();
 var bodyParser = require('body-parser');
 var applescript = require('applescript');
 var fs = require('fs');
+const say = require('say');
 
 var logFormat = "'[:date[iso]] - :remote-addr - :method :url :status :response-time ms - :res[content-length]b'";
+
+
+/*Helper Functions*/
+
+setsource = function(name,callback){
+	
+var script = "tell application \"Airfoil\"\n";
+script += "	set srcString to \""+name+"\"\n";
+script += "	try\n";
+script += "		set aSource to (first system source whose name is srcString)\n";
+script += "	on error errMsg\n";
+script += "		try\n";
+script += "			set aSource to (first application source whose name is srcString)\n";
+script += "		on error errMsg2\n";
+script += "			set aSource to (first device source whose name is srcString)\n";
+script += "	end try\n";
+script += " end try\n";
+script += "   set current audio source to aSource\n";
+script += "end tell";
+
+
+
+  applescript.execString(script, function(error, result) {
+    if (error) {
+      callback.call(false);
+    } else {
+      callback.call(true);
+    }
+  });
+	
+	
+};
+
+speak = function(words,callback){
+	
+say.speak(" ");//this "wakes it up"
+say.stop();
+
+
+say.speak(words, 'Samantha',1.0,(err) => {
+
+  callback.call();
+
+  if (err) {
+    return console.error(err)
+  }
+ 
+});
+
+	
+	
+}
+
+/*Main Code*/
+
 app.use(morgan(logFormat));
 app.use(bodyParser.text({type: '*/*'}));
+
+
+app.post('/say',function(req,res){
+	
+	
+ //get the source, set to source, then speak and reset	
+ var script = "tell application \"Airfoil\"\n";
+     script += "set aSource to current audio source\n";
+     script += "get name of aSource\n"
+     script += "end tell";
+    
+     
+     promise = new Promise(function(resolve,reject){
+ 
+     applescript.execString(script, function(error, result) {
+	    
+	    if(error){
+		    //do nothing here - we just won't list the current object	         
+	         reject(error);
+	    }else{
+		     
+		    
+		     resolve(result);
+	    }
+
+    });
+    
+   });
+	
+	
+promise.then(function(resp) { 
+	
+if(resp!=="System Audio"){
+	
+
+  setsource("System Audio",function(state){
+	  
+		  
+		   speak(req.body,function(){
+			  
+                        setsource(resp,function(){});
+			   
+		   });
+	  
+	  
+  })
+	 
+	
+	  
+  
+
+}else{
+  speak(req.body,function(){});	
+}	
+
+		
+
+
+}).catch(console.error);;
+
+stat = {};
+stat.ok = true;
+
+res.json(stat);
+
+});
+
 
 
 app.get('/applications', function(req, res){
@@ -76,10 +199,21 @@ app.get('/applications', function(req, res){
 
 
 app.post('/application/:name', function (req, res) {
-  var script = "tell application \"Airfoil\"\n";
-  script += "set aSource to first application source whose name is \""+req.params.name+"\"\n";
-  script += "set current audio source to aSource\n"
-  script += "end tell";
+ 
+var script = "tell application \"Airfoil\"\n";
+script += "	set srcString to \""+req.params.name+"\"\n";
+script += "	try\n";
+script += "		set aSource to (first system source whose name is srcString)\n";
+script += "	on error errMsg\n";
+script += "		try\n";
+script += "			set aSource to (first application source whose name is srcString)\n";
+script += "		on error errMsg2\n";
+script += "			set aSource to (first device source whose name is srcString)\n";
+script += "	end try\n";
+script += " end try\n";
+script += "   set current audio source to aSource\n";
+script += "end tell";
+
   applescript.execString(script, function(error, result) {
     if (error) {
       res.json({error: error});
