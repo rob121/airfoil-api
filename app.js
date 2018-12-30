@@ -94,10 +94,11 @@ script += "end tell";
     
      
 	  setTimeout(function(){
-	  
+	  console.log("Setting source to "+name);  
 	  callback.call();
+	
 	  
-	  },1000);//n
+	  },2000);//n
     
   });
 	
@@ -121,7 +122,7 @@ say.speak(words, 'Samantha',1.0,(err) => {
   
   callback.call();
   
-  },2000);//need a bit extra time for some reason
+  },2500);//need a bit extra time for some reason
  
 });
 
@@ -138,80 +139,98 @@ app.use(bodyParser.text({type: '*/*'}));
 //say to a speaker
 
 app.post('/say/:id',function(req,res){
+
+
+
+speakers = req.params.id.split("--");
+
+var commands = new Array();
+
+
+speakers.forEach(function(curspeaker) {
 	
+//console.log("SPEAKER: "+i+") "+speakers[i]);
 
  //get the source, set to source, then speak and reset	
 var script="tell application \"Airfoil\"\n";
 script+="set aSource to current audio source\n";
 script+="	set cApp to name of aSource\n";
-script+="	set myspeaker to first speaker whose id is \""+	req.params.id+"\"\n";
+script+="	set myspeaker to first speaker whose id is \""+	curspeaker+"\"\n";
 script+="	set conn to connected of myspeaker\n";
 script+="	connect to myspeaker\n";
 script+="	set cVol to volume of myspeaker\n";
 script+="	set (volume of myspeaker) to \"0.50\"\n";
 script+="	get cVol & cApp & conn\n";
 script+="end tell";
+
+     
+     //console.log(curspeaker)
     
      
-     promise = new Promise(function(resolve,reject){
+     comm = new Promise(function(resolve,reject){
  
-     applescript.execString(script, function(error, result) {
+ 
+ //     console.log(script);
+      applescript.execString(script, function(error, resp) {
 	    
 	    if(error){
 		    //do nothing here - we just won't list the current object	         
 	         reject(error);
 	    }else{
 		     
+		
+	        resp[3] = curspeaker;
+	      
+           if(resp[1]!=="System Audio"){
+	           setsource("System Audio",function(state){
+		     
+		           resolve(resp);
+	           });
+	       }else{
+		       
+		          resolve(resp);   
+	       }    
+		     
 		    
-		     resolve(result);
+		   
 	    }
 
     });
     
    });
-	
-	
-promise.then(function(resp) { 
-	
-	
-ovol = resp[0];
-osrc = resp[1];
-oconn = resp[2];
-	
-if(osrc!=="System Audio"){
-	
-  
-  setsource("System Audio",function(state){
-	  
-		  
-		   speak(req.body,function(){
-			  
-                       speaker(req.params.id,ovol,oconn,osrc);
-			   
-		   });
-	  
-	  
-  })
-	 
-	
-	  
-  
+   
+   commands.push(comm);
+});
 
-}else{
+
 	
-  
+Promise.all(commands).then(function(data){
+
   speak(req.body,function(){
 	  
-	  speaker(req.params.id,ovol,oconn,osrc);
 	  
+	 data.forEach(function(resp) {
+
+     
+      	  
+	  ovol = resp[0];
+	  osrc = resp[1];
+	  oconn = resp[2];
+	  id = resp[3];
+	  
+	  console.log(resp);
+	  
+	  speaker(id,ovol,oconn,osrc);
+	  
+	  });
+
   });	
-}	
+  
+  
+});	
 
 
-		
-
-
-}).catch(console.error);;
+	
 
 stat = {};
 stat.ok = true;
