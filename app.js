@@ -12,6 +12,58 @@ var logFormat = "'[:date[iso]] - :remote-addr - :method :url :status :response-t
 
 /*Helper Functions*/
 
+speaker = function(id,vol,connect,name){
+
+console.log("Setting speaker state");
+
+var script = "tell application \"Airfoil\"\n";
+script += "	set srcString to \""+name+"\"\n";
+script += "	try\n";
+script += "		set aSource to (first system source whose name is srcString)\n";
+script += "	on error errMsg\n";
+script += "		try\n";
+script += "			set aSource to (first application source whose name is srcString)\n";
+script += "		on error errMsg2\n";
+script += "			set aSource to (first device source whose name is srcString)\n";
+script += "	end try\n";
+script += " end try\n";
+script += "   set current audio source to aSource\n";
+script +="	set myspeaker to first speaker whose id is \""+id+"\"\n";
+if(connect==true){
+ 
+script += "connect to myspeaker\n";
+
+}else{
+	
+script += "disconnect from myspeaker\n";
+
+}
+script +="	set (volume of myspeaker) to \""+parseFloat(vol)+"\"\n";
+script += "end tell";
+
+
+     
+  applescript.execString(script, function(error, result) {
+
+	if(error){
+	    //do nothing here - we just won't list the current object	         
+	    console.log(error)
+	}else{
+	     
+	    
+	    console.log(result)
+	}
+
+});
+    
+
+   
+
+	
+};
+
+
+
 setsource = function(name,callback){
 	
 var script = "tell application \"Airfoil\"\n";
@@ -32,10 +84,21 @@ script += "end tell";
 
   applescript.execString(script, function(error, result) {
     if (error) {
-      callback.call(false);
-    } else {
-      callback.call(true);
+	    
+ 
+      state = true
+          } else {
+      state = false
+    
     }
+    
+     
+	  setTimeout(function(){
+	  
+	  callback.call();
+	  
+	  },1000);//n
+    
   });
 	
 	
@@ -43,17 +106,22 @@ script += "end tell";
 
 speak = function(words,callback){
 	
-say.speak(" ");//this "wakes it up"
-say.stop();
-
+console.log("Speaking");
 
 say.speak(words, 'Samantha',1.0,(err) => {
-
-  callback.call();
+ 
 
   if (err) {
     return console.error(err)
   }
+  
+  console.log("Done Speaking");
+  
+  setTimeout(function(){
+  
+  callback.call();
+  
+  },2000);//need a bit extra time for some reason
  
 });
 
@@ -67,14 +135,22 @@ app.use(morgan(logFormat));
 app.use(bodyParser.text({type: '*/*'}));
 
 
-app.post('/say',function(req,res){
+//say to a speaker
+
+app.post('/say/:id',function(req,res){
 	
-	
+
  //get the source, set to source, then speak and reset	
- var script = "tell application \"Airfoil\"\n";
-     script += "set aSource to current audio source\n";
-     script += "get name of aSource\n"
-     script += "end tell";
+var script="tell application \"Airfoil\"\n";
+script+="set aSource to current audio source\n";
+script+="	set cApp to name of aSource\n";
+script+="	set myspeaker to first speaker whose id is \""+	req.params.id+"\"\n";
+script+="	set conn to connected of myspeaker\n";
+script+="	connect to myspeaker\n";
+script+="	set cVol to volume of myspeaker\n";
+script+="	set (volume of myspeaker) to \"0.50\"\n";
+script+="	get cVol & cApp & conn\n";
+script+="end tell";
     
      
      promise = new Promise(function(resolve,reject){
@@ -97,15 +173,20 @@ app.post('/say',function(req,res){
 	
 promise.then(function(resp) { 
 	
-if(resp!=="System Audio"){
 	
-
+ovol = resp[0];
+osrc = resp[1];
+oconn = resp[2];
+	
+if(osrc!=="System Audio"){
+	
+  
   setsource("System Audio",function(state){
 	  
 		  
 		   speak(req.body,function(){
 			  
-                        setsource(resp,function(){});
+                       speaker(req.params.id,ovol,oconn,osrc);
 			   
 		   });
 	  
@@ -117,8 +198,15 @@ if(resp!=="System Audio"){
   
 
 }else{
-  speak(req.body,function(){});	
+	
+  
+  speak(req.body,function(){
+	  
+	  speaker(req.params.id,ovol,oconn,osrc);
+	  
+  });	
 }	
+
 
 		
 
