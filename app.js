@@ -12,9 +12,11 @@ var logFormat = "'[:date[iso]] - :remote-addr - :method :url :status :response-t
 
 /*Helper Functions*/
 
-speaker = function(id,vol,connect,name){
+speaker = function(id,vol,connect_string,name){
 
 console.log("Setting speaker state");
+
+var connect = (connect_string === 'true');
 
 var script = "tell application \"Airfoil\"\n";
 script += "	set srcString to \""+name+"\"\n";
