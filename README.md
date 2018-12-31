@@ -18,6 +18,8 @@ Wrap Airfoil's Applescript interface with a JSON API.
     {"active":"Safari","available":["Google Chrome","Safari","Amazon Music","QuickTime Player","iTunes","Built-in Input","System Audio"]}
     $ curl -X POST http://localhost:8080/application/iTunes
     {"active":"iTunes"}
+    $ curl -X POST -d "Speak this text" http://localhost:8080/say/{speaker_id}--{another_speaker_id}}
+    {"active":"iTunes"}
     
     
 
@@ -35,6 +37,12 @@ Wrap Airfoil's Applescript interface with a JSON API.
   ### Forever
 
   airfoil-api has support for [Forever](https://github.com/foreverjs/forever). It uses `launchd` on OS X to kick it off so that it starts on boot.
+  
+  ### Text to speech
+  
+  This branch supports text to speech, using the say method you can specify the text and which speakers on Airfoil to output. 
+  
+  It will increase the volume to 50%, connect the speaker(s) and then revert to their previous state after the speech is done.
 
   ### Development
 
